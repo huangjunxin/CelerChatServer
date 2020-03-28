@@ -18,7 +18,7 @@ namespace CelerChatServer {
         }
 
         static Socket serverSocket = null;
-        static string remoteEndPoint = null;
+        static Dictionary<string, Socket> clientConnectionDict = new Dictionary<string, Socket> { };
 
         private void startButton_Click(object sender, EventArgs e) {
             // 禁用Button
@@ -55,12 +55,15 @@ namespace CelerChatServer {
                 }
 
                 // 获取客户端网络节点号
-                remoteEndPoint = connection.RemoteEndPoint.ToString();
+                string remoteEndPoint = connection.RemoteEndPoint.ToString();
 
                 // 增加至clientConnectionList
                 BeginInvoke(new Action(() => {
                     clientConnectionList.Items.Insert(0, remoteEndPoint);
                 }));
+
+                // 增加至clientConnectionDict
+                clientConnectionDict.Add(remoteEndPoint, connection);
 
                 // 创建一个通信线程，用于接收客户端发来的信息
                 Thread thread = new Thread(Recv);
@@ -85,17 +88,17 @@ namespace CelerChatServer {
                     // 获取当前时间
                     string nowDateTime = DateTime.Now.ToString();
 
-                    // 获取线程名称
-                    // string threadName = Thread.CurrentThread.Name;
+                    // 将收到的字符串拼接成一条新消息
+                    string newMsg = socketServer.RemoteEndPoint + " " + nowDateTime;
+                    newMsg += Environment.NewLine;
+                    newMsg += "　" + srcMsgString;
+                    newMsg += Environment.NewLine;
 
-                    // 将收到的字符串更新到chatHistory
+                    // 将新消息增加到chatHistory
                     string chatHistory = chatHistoryTextBox.Text;
-                    chatHistory += remoteEndPoint + " " + nowDateTime;
-                    chatHistory += Environment.NewLine;
-                    chatHistory += "　" + srcMsgString;
-                    chatHistory += Environment.NewLine;
+                    chatHistory += newMsg;
 
-                    // 将chatHistory更新到chatHistoryTextBox
+                    // 将增加新消息后的chatHistory更新到chatHistoryTextBox
                     BeginInvoke(new Action(() => {
                         chatHistoryTextBox.Text = chatHistory;
 
@@ -104,12 +107,20 @@ namespace CelerChatServer {
                         chatHistoryTextBox.ScrollToCaret();
                     }));
 
-                    // 将chatHistory发回给客户端
-                    string sendChatHistory = chatHistory;
-                    byte[] sendChatHistoryBuffer = Encoding.UTF8.GetBytes(sendChatHistory);
-                    connection.Send(sendChatHistoryBuffer);
+                    // 将新消息发回给所有已连接的客户端
+                    if (clientConnectionDict.Count > 0) {
+                        string sendNewMsg = newMsg;
+                        byte[] sendNewMsgBuffer = Encoding.UTF8.GetBytes(sendNewMsg);
+                        foreach (var clientConnection in clientConnectionDict) {
+                            clientConnection.Value.Send(sendNewMsgBuffer);
+                        }
+                    }
 
                 } catch (Exception ex) {
+                    // 当发现连接断开时，应删除clientConnectionDict中的项
+                    clientConnectionDict.Remove(socketServer.RemoteEndPoint.ToString());
+                    // 当发现连接断开时，应删除chatHistoryTextBox中的项
+                    // chatHistoryTextBox.Text.Remove(socketServer.RemoteEndPoint.ToString());
                     Console.WriteLine(ex.Message);
                     socketServer.Close();
                     break;
