@@ -117,10 +117,16 @@ namespace CelerChatServer {
                     }
 
                 } catch (Exception ex) {
+                    string toRemoveIP = socketServer.RemoteEndPoint.ToString();
+
                     // 当发现连接断开时，应删除clientConnectionDict中的项
-                    clientConnectionDict.Remove(socketServer.RemoteEndPoint.ToString());
+                    clientConnectionDict.Remove(toRemoveIP);
+
                     // 当发现连接断开时，应删除chatHistoryTextBox中的项
-                    // chatHistoryTextBox.Text.Remove(socketServer.RemoteEndPoint.ToString());
+                    BeginInvoke(new Action(() => {
+                        clientConnectionList.Items.Remove(toRemoveIP);
+                    }));
+
                     Console.WriteLine(ex.Message);
                     socketServer.Close();
                     break;
