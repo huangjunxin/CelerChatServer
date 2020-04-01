@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -19,6 +20,7 @@ namespace CelerChatServer {
 
         static Socket serverSocket = null;
         static Dictionary<string, Socket> clientConnectionDict = new Dictionary<string, Socket> { };
+        static Dictionary<string, string> clientNicknameDict = new Dictionary<string, string> { };
 
         private void startButton_Click(object sender, EventArgs e) {
             // 禁用Button
@@ -57,11 +59,6 @@ namespace CelerChatServer {
                 // 获取客户端网络节点号
                 string remoteEndPoint = connection.RemoteEndPoint.ToString();
 
-                // 增加至clientConnectionList
-                BeginInvoke(new Action(() => {
-                    clientConnectionList.Items.Insert(0, remoteEndPoint);
-                }));
-
                 // 增加至clientConnectionDict
                 clientConnectionDict.Add(remoteEndPoint, connection);
 
@@ -77,22 +74,51 @@ namespace CelerChatServer {
 
             while (true) {
                 // 创建内存缓冲区
-                byte[] srcMsgBuffer = new byte[1024 * 1024];
+                byte[] srcObjectBuffer = new byte[1024 * 1024];
 
                 try {
-                    int len = socketServer.Receive(srcMsgBuffer);
-                    
+                    int len = socketServer.Receive(srcObjectBuffer);
+
                     // 将byte转换为string
-                    string srcMsgString = Encoding.UTF8.GetString(srcMsgBuffer, 0, len);
+                    string srcObjectString = Encoding.UTF8.GetString(srcObjectBuffer, 0, len);
+
+                    // 将string转换为Json
+                    ContactObject co = JsonConvert.DeserializeObject<ContactObject>(srcObjectString);
+
+                    // 获取客户端网络节点号
+                    string remoteEndPoint = socketServer.RemoteEndPoint.ToString();
 
                     // 获取当前时间
                     string nowDateTime = DateTime.Now.ToString();
 
-                    // 将收到的字符串拼接成一条新消息
-                    string newMsg = socketServer.RemoteEndPoint + " " + nowDateTime;
-                    newMsg += Environment.NewLine;
-                    newMsg += "　" + srcMsgString;
-                    newMsg += Environment.NewLine;
+                    // 声明返回用变量
+                    string newMsg = null;
+
+                    // 若nickname不为空，则说明是首次加入
+                    if (co.nickname != null) {
+                        // 将nickname增加至clientNicknameDict
+                        clientNicknameDict.Add(remoteEndPoint, co.nickname);
+
+                        // 增加至clientConnectionList
+                        BeginInvoke(new Action(() => {
+                            clientConnectionList.Items.Insert(0, co.nickname);
+                        }));
+
+                        // 加入聊天室提示
+                        string newInfo = clientNicknameDict[remoteEndPoint] + " entered the chat room.";
+
+                        // 将新提示拼接成一条新消息
+                        newMsg = clientNicknameDict[remoteEndPoint] + " " + nowDateTime;
+                        newMsg += Environment.NewLine;
+                        newMsg += "　" + newInfo;
+                        newMsg += Environment.NewLine;
+                    } else {
+                        // 将收到的字符串拼接成一条新消息
+                        newMsg = clientNicknameDict[remoteEndPoint] + " " + nowDateTime;
+                        newMsg += Environment.NewLine;
+                        newMsg += "　" + co.msg;
+                        newMsg += Environment.NewLine;
+                    }
 
                     // 将新消息增加到chatHistory
                     string chatHistory = chatHistoryTextBox.Text;
@@ -127,8 +153,11 @@ namespace CelerChatServer {
 
                     // 当发现连接断开时，应删除chatHistoryTextBox中的项
                     BeginInvoke(new Action(() => {
-                        clientConnectionList.Items.Remove(toRemoveIP);
+                        clientConnectionList.Items.Remove(clientNicknameDict[toRemoveIP]);
                     }));
+
+                    // 当发现连接断开时，应删除clientNicknameDict中的项
+                    clientNicknameDict.Remove(clientNicknameDict[toRemoveIP]);
 
                     Console.WriteLine(ex.Message);
                     socketServer.Close();
@@ -136,5 +165,10 @@ namespace CelerChatServer {
                 }
             }
         }
+    }
+
+    class ContactObject {
+        public string nickname = null;
+        public string msg = null;
     }
 }

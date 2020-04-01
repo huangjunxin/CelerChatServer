@@ -70,7 +70,7 @@
             this.Controls.Add(this.clientConnectionList);
             this.Controls.Add(this.chatHistoryTextBox);
             this.Name = "Form1";
-            this.Text = "CelerChatServer  - Alpha 0.3 By Transion C. T. Studio";
+            this.Text = "CelerChatServer  - Alpha 0.4 By Transion C. T. Studio";
             this.ResumeLayout(false);
             this.PerformLayout();
 
