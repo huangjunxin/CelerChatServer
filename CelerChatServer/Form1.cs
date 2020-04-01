@@ -88,9 +88,6 @@ namespace CelerChatServer {
                     // 获取客户端网络节点号
                     string remoteEndPoint = socketServer.RemoteEndPoint.ToString();
 
-                    // 获取当前时间
-                    string nowDateTime = DateTime.Now.ToString();
-
                     // 声明返回用变量
                     string newMsg = null;
 
@@ -107,31 +104,12 @@ namespace CelerChatServer {
                         // 加入聊天室提示
                         string newInfo = clientNicknameDict[remoteEndPoint] + " entered the chat room.";
 
-                        // 将新提示拼接成一条新消息
-                        newMsg = clientNicknameDict[remoteEndPoint] + " " + nowDateTime;
-                        newMsg += Environment.NewLine;
-                        newMsg += "　" + newInfo;
-                        newMsg += Environment.NewLine;
+                        // 根据nickname与newInfo创建新消息
+                        newMsg = MakeNewMsg(clientNicknameDict[remoteEndPoint], newInfo);
                     } else {
-                        // 将收到的字符串拼接成一条新消息
-                        newMsg = clientNicknameDict[remoteEndPoint] + " " + nowDateTime;
-                        newMsg += Environment.NewLine;
-                        newMsg += "　" + co.msg;
-                        newMsg += Environment.NewLine;
+                        // 根据nickname与co.msg创建新消息
+                        newMsg = MakeNewMsg(clientNicknameDict[remoteEndPoint], co.msg);
                     }
-
-                    // 将新消息增加到chatHistory
-                    string chatHistory = chatHistoryTextBox.Text;
-                    chatHistory += newMsg;
-
-                    // 将增加新消息后的chatHistory更新到chatHistoryTextBox
-                    BeginInvoke(new Action(() => {
-                        chatHistoryTextBox.Text = chatHistory;
-
-                        // 滚动到最底部
-                        chatHistoryTextBox.SelectionStart = chatHistoryTextBox.Text.Length;
-                        chatHistoryTextBox.ScrollToCaret();
-                    }));
 
                     // 将新消息发回给所有已连接的客户端
                     if (clientConnectionDict.Count > 0) {
@@ -164,6 +142,32 @@ namespace CelerChatServer {
                     break;
                 }
             }
+        }
+
+        public string MakeNewMsg(string nickname, string msg) {
+            // 获取当前时间
+            string nowDateTime = DateTime.Now.ToString();
+
+            // 即将发送的字符串拼接成一条新消息
+            string newMsg = nickname + " " + nowDateTime;
+            newMsg += Environment.NewLine;
+            newMsg += "　" + msg;
+            newMsg += Environment.NewLine;
+
+            // 将新消息增加到chatHistory
+            string chatHistory = chatHistoryTextBox.Text;
+            chatHistory += newMsg;
+
+            // 将增加新消息后的chatHistory更新到chatHistoryTextBox
+            BeginInvoke(new Action(() => {
+                chatHistoryTextBox.Text = chatHistory;
+
+                // 滚动到最底部
+                chatHistoryTextBox.SelectionStart = chatHistoryTextBox.Text.Length;
+                chatHistoryTextBox.ScrollToCaret();
+            }));
+
+            return newMsg;
         }
     }
 
