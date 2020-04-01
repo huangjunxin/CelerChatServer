@@ -112,7 +112,10 @@ namespace CelerChatServer {
                         string sendNewMsg = newMsg;
                         byte[] sendNewMsgBuffer = Encoding.UTF8.GetBytes(sendNewMsg);
                         foreach (var clientConnection in clientConnectionDict) {
-                            clientConnection.Value.Send(sendNewMsgBuffer);
+                            // 不必发回给发送该消息的客户端
+                            if (clientConnection.Key != socketServer.RemoteEndPoint.ToString()) {
+                                clientConnection.Value.Send(sendNewMsgBuffer);
+                            }
                         }
                     }
 
