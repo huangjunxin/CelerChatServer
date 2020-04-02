@@ -91,24 +91,26 @@ namespace CelerChatServer {
                     // 声明返回用变量
                     string newMsg = null;
 
-                    // 若nickname不为空，则说明是首次加入
-                    if (co.nickname != null) {
-                        // 将nickname增加至clientNicknameDict
-                        clientNicknameDict.Add(remoteEndPoint, co.nickname);
+                    if (co != null) {
+                        // 若nickname不为空，则说明是首次加入
+                        if (co.nickname != null) {
+                            // 将nickname增加至clientNicknameDict
+                            clientNicknameDict.Add(remoteEndPoint, co.nickname);
 
-                        // 增加至clientConnectionList
-                        BeginInvoke(new Action(() => {
-                            clientConnectionList.Items.Insert(0, co.nickname);
-                        }));
+                            // 增加至clientConnectionList
+                            BeginInvoke(new Action(() => {
+                                clientConnectionList.Items.Insert(0, co.nickname);
+                            }));
 
-                        // 加入聊天室提示
-                        string newInfo = clientNicknameDict[remoteEndPoint] + " entered the chat room.";
+                            // 加入聊天室提示
+                            string newInfo = clientNicknameDict[remoteEndPoint] + " entered the chat room.";
 
-                        // 根据nickname与newInfo创建新消息
-                        newMsg = MakeNewMsg(clientNicknameDict[remoteEndPoint], newInfo);
-                    } else {
-                        // 根据nickname与co.msg创建新消息
-                        newMsg = MakeNewMsg(clientNicknameDict[remoteEndPoint], co.msg);
+                            // 根据nickname与newInfo创建新消息
+                            newMsg = MakeNewMsg(clientNicknameDict[remoteEndPoint], newInfo);
+                        } else {
+                            // 根据nickname与co.msg创建新消息
+                            newMsg = MakeNewMsg(clientNicknameDict[remoteEndPoint], co.msg);
+                        }
                     }
 
                     // 将新消息发回给所有已连接的客户端
@@ -127,15 +129,21 @@ namespace CelerChatServer {
                     string toRemoveIP = socketServer.RemoteEndPoint.ToString();
 
                     // 当发现连接断开时，应删除clientConnectionDict中的项
-                    clientConnectionDict.Remove(toRemoveIP);
+                    if (clientConnectionDict.ContainsKey(toRemoveIP)) {
+                        clientConnectionDict.Remove(toRemoveIP);
+                    }
 
                     // 当发现连接断开时，应删除chatHistoryTextBox中的项
                     BeginInvoke(new Action(() => {
-                        clientConnectionList.Items.Remove(clientNicknameDict[toRemoveIP]);
+                        if (clientNicknameDict.ContainsKey(toRemoveIP) && clientConnectionList.Items.Contains(clientNicknameDict[toRemoveIP])) {
+                            clientConnectionList.Items.Remove(clientNicknameDict[toRemoveIP]);
+                        }
                     }));
 
-                    // 当发现连接断开时，应删除clientNicknameDict中的项
-                    clientNicknameDict.Remove(clientNicknameDict[toRemoveIP]);
+                    if (clientNicknameDict.ContainsKey(toRemoveIP)) {
+                        // 当发现连接断开时，应删除clientNicknameDict中的项
+                        clientNicknameDict.Remove(clientNicknameDict[toRemoveIP]);
+                    }
 
                     Console.WriteLine(ex.Message);
                     socketServer.Close();
